@@ -1,11 +1,13 @@
-use std::{env, process};
 use minigrep::Config;
+use std::{env, process};
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
+    let args = env::args().skip(1).into_iter();
 
-    let config = Config::new(&args).unwrap_or_else(|err| {
-        eprintln!("err: {}", err);
+    let config = Config::new(args).unwrap_or_else(|errs| {
+        for err in errs {
+            println!("{}", err)
+        }
         process::exit(1);
     });
 
@@ -17,4 +19,3 @@ fn main() {
         process::exit(1);
     }
 }
-
