@@ -1,4 +1,6 @@
+use std::env::Args;
 use std::error::Error;
+use std::iter::Skip;
 use std::{env, fs};
 
 pub struct Config {
@@ -8,18 +10,52 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn new (args: &[String]) -> Result<Config, &'static str> {
-        if args.len() < 3 {
-            return Err("args - needle haystack.txt");
+    /// Creates a new configuration based on args
+    ///
+    /// # Examples
+    ///
+    /// let config = Config::new(args).unwrap_or_else(|errs| {
+    ///   for err in errs {
+    ///       println!("{}", err)
+    ///   }
+    ///   process::exit(1);
+    /// });
+    pub fn new(mut args: Skip<Args>) -> Result<Config, Vec<&'static str>> {
+        let mut errors = Vec::new();
+
+        /// you can do this:
+        let mut query = String::new();
+        if let Some(arg) = args.next() {
+            query = arg;
+        } else {
+            errors.push("query");
         }
-        let query = args[1].clone();
-        let filename = args[2].clone();
+
+        /// but idiomatic in rust would be the entry:
+        let filename = args.next().unwrap_or_else(|| {
+            errors.push("filename");
+            String::new()
+        });
+
+        /// another use unwrap:
+        /// let filename = args.next().unwrap_or_default();
+        /// if filename.is_empty() {
+        ///     errors.push("filename");
+        /// }
+
+        if !errors.is_empty() {
+            return Err(errors);
+        }
+
         let case_sensitive = env::var("CASE_INSENSITIVE").is_err();
-        Ok(Config {query, filename, case_sensitive})
+
+        Ok(Config {
+            query,
+            filename,
+            case_sensitive,
+        })
     }
 }
-
-
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let contents = fs::read_to_string(config.filename)?;
@@ -39,27 +75,18 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
 
 pub fn search_case_insensitive<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
     let query = query.to_lowercase();
-    let mut results = Vec::new();
 
-    for line in contents.lines() {
-        if line.to_lowercase().contains(&query) {
-            results.push(line);
-        }
-    }
-
-    results
+    contents
+        .lines()
+        .filter(|line| line.to_lowercase().contains(&query))
+        .collect()
 }
 
 pub fn search<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
-    let mut results = Vec::new();
-
-    for line in contents.lines() {
-        if line.contains(query) {
-            results.push(line);
-        }
-    }
-
-    results
+    contents
+        .lines()
+        .filter(|line| line.contains(query))
+        .collect()
 }
 
 #[cfg(test)]
@@ -75,9 +102,7 @@ safe, fast, productive.
 Pick three.
 Duct tape.";
 
-        assert_eq!(
-            vec!["safe, fast, productive."], search(query, contents)
-        );
+        assert_eq!(vec!["safe, fast, productive."], search(query, contents));
     }
 
     #[test]
@@ -90,7 +115,8 @@ Pick three.
 Trust me.";
 
         assert_eq!(
-            vec!["Rust:", "Trust me."], search_case_insensitive(query, contents)
+            vec!["Rust:", "Trust me."],
+            search_case_insensitive(query, contents)
         );
     }
 }
