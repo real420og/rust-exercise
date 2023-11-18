@@ -10,10 +10,20 @@ pub struct Config {
 }
 
 impl Config {
+    /// Creates a new configuration based on args
+    ///
+    /// # Examples
+    ///
+    /// let config = Config::new(args).unwrap_or_else(|errs| {
+    ///   for err in errs {
+    ///       println!("{}", err)
+    ///   }
+    ///   process::exit(1);
+    /// });
     pub fn new(mut args: Skip<Args>) -> Result<Config, Vec<&'static str>> {
         let mut errors = Vec::new();
 
-        // you can do this:
+        /// you can do this:
         let mut query = String::new();
         if let Some(arg) = args.next() {
             query = arg;
@@ -21,17 +31,17 @@ impl Config {
             errors.push("query");
         }
 
-        // but idiomatic in rust would be the entry:
+        /// but idiomatic in rust would be the entry:
         let filename = args.next().unwrap_or_else(|| {
             errors.push("filename");
             String::new()
         });
 
-        // another use unwrap:
-        // let filename = args.next().unwrap_or_default();
-        // if filename.is_empty() {
-        //     errors.push("filename");
-        // }
+        /// another use unwrap:
+        /// let filename = args.next().unwrap_or_default();
+        /// if filename.is_empty() {
+        ///     errors.push("filename");
+        /// }
 
         if !errors.is_empty() {
             return Err(errors);
